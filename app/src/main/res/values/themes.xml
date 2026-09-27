@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Uses system native Material theme with zero AppCompat library weight -->
+    <style name="Theme.UltraLightPdf" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/viewer_backdrop</item>
+        <item name="android:navigationBarColor">@color/viewer_backdrop</item>
+        <item name="android:windowBackground">@color/viewer_backdrop</item>
+    </style>
+</resources>
