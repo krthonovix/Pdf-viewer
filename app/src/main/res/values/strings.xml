@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">UltraLight PDF</string>
-    <string name="empty_state_title">Visor PDF Ultra-Ligero</string>
-    <string name="empty_state_subtitle">Sin sobrecarga de memoria • Motor nativo Android</string>
-    <string name="action_open_pdf">Abrir archivo PDF</string>
-    <string name="action_open_short">Abrir</string>
-    <string name="mode_night">Noche</string>
-    <string name="mode_day">Día</string>
-    <string name="scroll_vertical">Vertical</string>
-    <string name="scroll_horizontal">Páginas</string>
+    <string name="empty_state_title">UltraLight PDF Viewer</string>
+    <string name="empty_state_subtitle">Motor nativo Android • Ultrarrápido y sin consumo extra de RAM</string>
+    <string name="empty_state_hint">También puedes abrir cualquier PDF directamente desde tu gestor de archivos o WhatsApp</string>
+    <string name="action_open_pdf">📂 Seleccionar archivo PDF</string>
+    <string name="action_open_short">📂 Abrir</string>
+    <string name="mode_night">🌙 Noche</string>
+    <string name="mode_day">☀️ Día</string>
+    <string name="scroll_vertical">↕ Continuo</string>
+    <string name="scroll_horizontal">↔ Páginas</string>
+    <string name="page_indicator_format">Pág. %1$d de %2$d</string>
     <string name="jump_to_page_title">Ir a la página</string>
     <string name="error_opening_pdf">No se pudo abrir el PDF: %1$s</string>
 </resources>

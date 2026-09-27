@@ -6,13 +6,18 @@ import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.text.InputType
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -30,6 +35,9 @@ import kotlinx.coroutines.launch
 /**
  * Ultra-lightweight main Activity extending platform [Activity] directly (no AppCompat bloat)
  * for instant cold-start (< 80ms) and minimal APK footprint.
+ *
+ * Includes full WindowInsets (Status Bar + Camera DisplayCutout + Navigation Bar) handling
+ * for Android 8.0 through Android 15+ Edge-to-Edge displays.
  */
 class MainActivity : Activity(), ComponentCallbacks2 {
 
@@ -41,15 +49,21 @@ class MainActivity : Activity(), ComponentCallbacks2 {
     private lateinit var layoutManager: LinearLayoutManager
     private val pagerSnapHelper = PagerSnapHelper()
 
+    private lateinit var rootContainer: FrameLayout
     private lateinit var recyclerView: ZoomableRecyclerView
     private lateinit var topBar: LinearLayout
+    private lateinit var bottomBar: LinearLayout
     private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var tvDocumentTitle: TextView
     private lateinit var tvPageIndicator: TextView
     private lateinit var btnNightMode: Button
     private lateinit var btnScrollMode: Button
+    private lateinit var btnPrevPage: Button
+    private lateinit var btnNextPage: Button
 
     private var currentUri: Uri? = null
     private var currentPageIndex: Int = 0
+    private var isHudVisible: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +73,7 @@ class MainActivity : Activity(), ComponentCallbacks2 {
         stateStore = ReadingStateStore(this)
 
         bindViews()
+        setupWindowInsets()
         setupRecyclerView()
         restoreGlobalPreferences()
 
@@ -74,12 +89,17 @@ class MainActivity : Activity(), ComponentCallbacks2 {
     }
 
     private fun bindViews() {
+        rootContainer = findViewById(R.id.rootContainer)
         recyclerView = findViewById(R.id.pdfRecyclerView)
         topBar = findViewById(R.id.topControlBar)
+        bottomBar = findViewById(R.id.bottomControlBar)
         emptyStateLayout = findViewById(R.id.emptyStateContainer)
+        tvDocumentTitle = findViewById(R.id.tvDocumentTitle)
         tvPageIndicator = findViewById(R.id.tvPageIndicator)
         btnNightMode = findViewById(R.id.btnNightMode)
         btnScrollMode = findViewById(R.id.btnScrollMode)
+        btnPrevPage = findViewById(R.id.btnPrevPage)
+        btnNextPage = findViewById(R.id.btnNextPage)
 
         findViewById<Button>(R.id.btnOpenPdf).setOnClickListener {
             launchDocumentPicker()
@@ -92,6 +112,14 @@ class MainActivity : Activity(), ComponentCallbacks2 {
             if (engine.pageCount > 0) {
                 showJumpToPageDialog()
             }
+        }
+
+        btnPrevPage.setOnClickListener {
+            navigateToPage(currentPageIndex - 1)
+        }
+
+        btnNextPage.setOnClickListener {
+            navigateToPage(currentPageIndex + 1)
         }
 
         btnNightMode.setOnClickListener {
@@ -107,6 +135,48 @@ class MainActivity : Activity(), ComponentCallbacks2 {
             applyScrollOrientation(nextHorizontal)
             updateToggleLabels()
         }
+    }
+
+    /**
+     * Prevents the top and bottom floating bars from colliding with the front camera cutout
+     * (punch-hole/notch), status bar, and bottom navigation gesture bar on Android Edge-to-Edge screens.
+     */
+    private fun setupWindowInsets() {
+        val density = resources.displayMetrics.density
+        val margin12Dp = (12f * density).toInt()
+        val margin14Dp = (14f * density).toInt()
+        val margin16Dp = (16f * density).toInt()
+        val topHudAllowancePx = (78f * density).toInt()
+        val bottomHudAllowancePx = (76f * density).toInt()
+
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { _, windowInsets ->
+            val insets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+
+            // Offset floating top bar safely below camera cutout & status bar
+            val topParams = topBar.layoutParams as ViewGroup.MarginLayoutParams
+            topParams.topMargin = insets.top + margin12Dp
+            topParams.leftMargin = insets.left + margin14Dp
+            topParams.rightMargin = insets.right + margin14Dp
+            topBar.layoutParams = topParams
+
+            // Offset floating bottom page pill safely above gesture navigation bar
+            val bottomParams = bottomBar.layoutParams as ViewGroup.MarginLayoutParams
+            bottomParams.bottomMargin = insets.bottom + margin16Dp
+            bottomBar.layoutParams = bottomParams
+
+            // Pad RecyclerView (with clipToPadding=false) so first and last PDF pages aren't covered by bars
+            recyclerView.setPadding(
+                insets.left,
+                insets.top + topHudAllowancePx,
+                insets.right,
+                insets.bottom + bottomHudAllowancePx
+            )
+
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(rootContainer)
     }
 
     private fun setupRecyclerView() {
@@ -131,7 +201,7 @@ class MainActivity : Activity(), ComponentCallbacks2 {
             }
 
             override fun onSingleTap() {
-                topBar.visibility = if (topBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                toggleHudVisibility()
             }
         }
 
@@ -151,6 +221,40 @@ class MainActivity : Activity(), ComponentCallbacks2 {
                 }
             }
         })
+    }
+
+    private fun toggleHudVisibility() {
+        isHudVisible = !isHudVisible
+        val duration = 180L
+
+        if (isHudVisible) {
+            topBar.visibility = View.VISIBLE
+            topBar.animate().alpha(1f).translationY(0f).setDuration(duration).start()
+            if (engine.pageCount > 0) {
+                bottomBar.visibility = View.VISIBLE
+                bottomBar.animate().alpha(1f).translationY(0f).setDuration(duration).start()
+            }
+        } else {
+            topBar.animate()
+                .alpha(0f)
+                .translationY(-topBar.height.toFloat() * 0.5f)
+                .setDuration(duration)
+                .withEndAction {
+                    if (!isHudVisible) topBar.visibility = View.GONE
+                }
+                .start()
+
+            if (bottomBar.visibility == View.VISIBLE) {
+                bottomBar.animate()
+                    .alpha(0f)
+                    .translationY(bottomBar.height.toFloat() * 0.5f)
+                    .setDuration(duration)
+                    .withEndAction {
+                        if (!isHudVisible) bottomBar.visibility = View.GONE
+                    }
+                    .start()
+            }
+        }
     }
 
     private fun restoreGlobalPreferences() {
@@ -231,7 +335,9 @@ class MainActivity : Activity(), ComponentCallbacks2 {
                 val totalPages = engine.openDocument(pfd)
 
                 currentUri = uri
+                tvDocumentTitle.text = resolveDisplayName(uri)
                 emptyStateLayout.visibility = if (totalPages > 0) View.GONE else View.VISIBLE
+                bottomBar.visibility = if (totalPages > 0 && isHudVisible) View.VISIBLE else View.GONE
                 adapter.notifyDataSetChanged()
 
                 val restoredPage = stateStore.getLastPage(uri).coerceIn(0, (totalPages - 1).coerceAtLeast(0))
@@ -250,6 +356,32 @@ class MainActivity : Activity(), ComponentCallbacks2 {
         }
     }
 
+    private fun resolveDisplayName(uri: Uri): String {
+        return try {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0) cursor.getString(idx) else null
+                } else null
+            } ?: uri.lastPathSegment ?: getString(R.string.app_name)
+        } catch (_: Throwable) {
+            uri.lastPathSegment ?: getString(R.string.app_name)
+        }
+    }
+
+    private fun navigateToPage(targetIndex: Int) {
+        val total = engine.pageCount
+        if (total <= 0) return
+        val clamped = targetIndex.coerceIn(0, total - 1)
+        if (clamped == currentPageIndex) return
+
+        recyclerView.resetZoom()
+        recyclerView.scrollToPosition(clamped)
+        currentPageIndex = clamped
+        updatePageLabel(clamped, total)
+        currentUri?.let { stateStore.saveLastPage(it, clamped) }
+    }
+
     private fun updateVisiblePageIndicator() {
         val total = engine.pageCount
         if (total <= 0) return
@@ -259,13 +391,17 @@ class MainActivity : Activity(), ComponentCallbacks2 {
             currentPageIndex = firstVisible
             updatePageLabel(firstVisible, total)
             currentUri?.let { stateStore.saveLastPage(it, firstVisible) }
-        } else if (tvPageIndicator.text.isEmpty()) {
-            updatePageLabel(currentPageIndex, total)
         }
     }
 
     private fun updatePageLabel(pageIndex: Int, totalPages: Int) {
-        tvPageIndicator.text = "${pageIndex + 1} / $totalPages"
+        tvPageIndicator.text = getString(R.string.page_indicator_format, pageIndex + 1, totalPages)
+        val hasPrev = pageIndex > 0
+        val hasNext = pageIndex < totalPages - 1
+        btnPrevPage.alpha = if (hasPrev) 1.0f else 0.35f
+        btnPrevPage.isEnabled = hasPrev
+        btnNextPage.alpha = if (hasNext) 1.0f else 0.35f
+        btnNextPage.isEnabled = hasNext
     }
 
     private fun showJumpToPageDialog() {
@@ -285,12 +421,7 @@ class MainActivity : Activity(), ComponentCallbacks2 {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val targetPage = input.text.toString().toIntOrNull()
                 if (targetPage != null) {
-                    val zeroBased = (targetPage - 1).coerceIn(0, total - 1)
-                    recyclerView.resetZoom()
-                    recyclerView.scrollToPosition(zeroBased)
-                    currentPageIndex = zeroBased
-                    updatePageLabel(zeroBased, total)
-                    currentUri?.let { stateStore.saveLastPage(it, zeroBased) }
+                    navigateToPage(targetPage - 1)
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
