@@ -31,10 +31,11 @@
         android:paddingBottom="28dp">
 
         <ImageView
-            android:layout_width="68dp"
-            android:layout_height="68dp"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_launcher" />
+            android:scaleType="fitCenter"
+            android:src="@mipmap/ic_launcher" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -104,6 +105,7 @@
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
             android:stateListAnimator="@null"
+            android:contentDescription="@string/action_open_accessibility"
             android:text="@string/action_open_short"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
@@ -114,6 +116,7 @@
             android:id="@+id/tvDocumentTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:minWidth="0dp"
             android:layout_marginStart="10dp"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
@@ -126,29 +129,31 @@
 
         <Button
             android:id="@+id/btnScrollMode"
-            android:layout_width="wrap_content"
+            android:layout_width="40dp"
             android:layout_height="36dp"
             android:layout_marginEnd="6dp"
             android:background="@drawable/bg_pill_chip"
             android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:stateListAnimator="@null"
-            android:text="@string/scroll_vertical"
+            android:contentDescription="@string/scroll_vertical"
+            android:text="@string/scroll_vertical_icon"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
             android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnNightMode"
-            android:layout_width="wrap_content"
+            android:layout_width="40dp"
             android:layout_height="36dp"
             android:background="@drawable/bg_pill_chip"
             android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:stateListAnimator="@null"
-            android:text="@string/mode_night"
+            android:contentDescription="@string/mode_night"
+            android:text="@string/mode_night_icon"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
             android:textSize="12sp" />

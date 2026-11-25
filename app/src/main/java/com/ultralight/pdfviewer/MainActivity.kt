@@ -276,8 +276,18 @@ class MainActivity : Activity(), ComponentCallbacks2 {
     }
 
     private fun updateToggleLabels() {
-        btnNightMode.text = if (adapter.nightMode) getString(R.string.mode_day) else getString(R.string.mode_night)
+        btnNightMode.text = if (adapter.nightMode) getString(R.string.mode_day_icon) else getString(R.string.mode_night_icon)
+        btnNightMode.contentDescription = if (adapter.nightMode) {
+            getString(R.string.mode_day_accessibility)
+        } else {
+            getString(R.string.mode_night_accessibility)
+        }
         btnScrollMode.text = if (stateStore.isHorizontalPaging) {
+            getString(R.string.scroll_horizontal_icon)
+        } else {
+            getString(R.string.scroll_vertical_icon)
+        }
+        btnScrollMode.contentDescription = if (stateStore.isHorizontalPaging) {
             getString(R.string.scroll_horizontal)
         } else {
             getString(R.string.scroll_vertical)
